@@ -1,0 +1,15 @@
+[project]
+name = "mini-nrbf"
+version = "0.1.0"
+description = "Bare-bones MS-NRBF parser"
+readme = "README.md"
+license = "BSD-3-Clause"
+authors = [
+    { name = "Quae", email = "quae.dev@gmail.com" }
+]
+requires-python = ">=3.10"
+dependencies = []
+
+[build-system]
+requires = ["uv_build>=0.8.15,<0.9.0"]
+build-backend = "uv_build"
