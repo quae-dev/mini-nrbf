@@ -11,6 +11,7 @@ Binary Format: <https://msdn.microsoft.com/en-us/library/cc236844.aspx>
 
 from __future__ import annotations
 
+import collections.abc as cabc
 import dataclasses
 import enum
 import io
@@ -307,8 +308,8 @@ def parse_file(path: os.PathLike[str] | str) -> list[RecordItem]:
     return parse_bytes(data)
 
 
-def serialize_records(records: list[RecordItem]) -> bytes:
-    """Serialize a list of `RecordItem` objects into NRBF-formatted data."""
+def serialize_records(records: cabc.Iterable[RecordItem]) -> bytes:
+    """Serialize a sequence of `RecordItem` objects into NRBF-formatted data."""
     buffer = io.BytesIO()
     writer = RecordWriter(buffer)
 
@@ -319,8 +320,8 @@ def serialize_records(records: list[RecordItem]) -> bytes:
 
 
 def serialize_to_file(
-    records: list[RecordItem], path: os.PathLike[str] | str
+    records: cabc.Iterable[RecordItem], path: os.PathLike[str] | str
 ) -> int:
-    """Serialize a list of `RecordItem` objects and write to a file."""
+    """Serialize a sequence of `RecordItem` objects and write to a file."""
     data = serialize_records(records)
     return pathlib.Path(path).write_bytes(data)
