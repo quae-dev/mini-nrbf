@@ -269,7 +269,7 @@ class DNBinary:
         self.stream: RecordStream = RecordStream(stream)
         self._records: list[RecordItem] = []
 
-    def parse(self) -> list[RecordItem]:
+    def parse(self) -> tuple[RecordItem, ...]:
         while True:
             record = self.stream.record()
             self._records.append(record)
@@ -277,21 +277,21 @@ class DNBinary:
             if isinstance(record, MessageEnd):
                 break
 
-        return self._records
+        return tuple(self._records)
 
 
-def parse_stream(stream: StreamReader) -> list[RecordItem]:
+def parse_stream(stream: StreamReader) -> tuple[RecordItem, ...]:
     """Parse a given binary MS-NRBF stream into a list of record objects."""
     return DNBinary(stream).parse()
 
 
-def parse_bytes(data: Buffer) -> list[RecordItem]:
+def parse_bytes(data: Buffer) -> tuple[RecordItem, ...]:
     """Parse a given buffer into a list of record objects."""
     stream = io.BytesIO(data)
     return parse_stream(stream)
 
 
-def parse_file(path: StrPath) -> list[RecordItem]:
+def parse_file(path: StrPath) -> tuple[RecordItem, ...]:
     """Parse a given file path into a list of record objects."""
     data = pathlib.Path(path).read_bytes()
     return parse_bytes(data)
