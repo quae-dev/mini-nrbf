@@ -11,7 +11,6 @@ Binary Format: <https://msdn.microsoft.com/en-us/library/cc236844.aspx>
 
 from __future__ import annotations
 
-import collections.abc as cabc
 import dataclasses
 import enum
 import io
@@ -20,7 +19,10 @@ import struct
 import typing as t
 
 if t.TYPE_CHECKING:
+    import collections.abc as cabc
     import os
+
+    StrPath: t.TypeAlias = os.PathLike[str] | str
 
 __all__ = [
     "BinaryObjectString",
@@ -302,7 +304,7 @@ def parse_bytes(data: bytes | bytearray | memoryview) -> list[RecordItem]:
     return parse_stream(stream)
 
 
-def parse_file(path: os.PathLike[str] | str) -> list[RecordItem]:
+def parse_file(path: StrPath) -> list[RecordItem]:
     """Parse a given file path into a list of record objects."""
     data = pathlib.Path(path).read_bytes()
     return parse_bytes(data)
@@ -320,7 +322,7 @@ def serialize_records(records: cabc.Iterable[RecordItem]) -> bytes:
 
 
 def serialize_to_file(
-    records: cabc.Iterable[RecordItem], path: os.PathLike[str] | str
+    records: cabc.Iterable[RecordItem], path: StrPath
 ) -> int:
     """Serialize a sequence of `RecordItem` objects and write to a file."""
     data = serialize_records(records)
