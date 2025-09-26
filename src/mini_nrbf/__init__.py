@@ -22,6 +22,7 @@ if t.TYPE_CHECKING:
     import collections.abc as cabc
     import os
 
+    Buffer: t.TypeAlias = bytes | bytearray | memoryview
     StrPath: t.TypeAlias = os.PathLike[str] | str
 
 __all__ = [
@@ -78,7 +79,7 @@ class StreamReader(t.Protocol):
 
 
 class StreamWriter(t.Protocol):
-    def write(self, data: bytes | bytearray, /) -> int: ...
+    def write(self, data: Buffer, /) -> int: ...
 
 
 class PrimitiveStream:
@@ -244,18 +245,13 @@ class RecordStream(PrimitiveStream):
         """
         self._objects[ref] = obj
 
-    @property
-    def object_definitions(self) -> int:
-        return len(self._objects)
 
-
-@t.final
 class RecordWriter:
     """Stream writer for NRBF records."""
 
     def __init__(self, stream: StreamWriter) -> None:
         super().__init__()
-        self.writer = PrimitiveWriter(stream)
+        self.writer: PrimitiveWriter = PrimitiveWriter(stream)
         self._objects: dict[int, RecordItem] = {}
 
     def record(self, record: RecordItem) -> None:
@@ -267,15 +263,10 @@ class RecordWriter:
         """Register an object for reference tracking."""
         self._objects[ref] = obj
 
-    @property
-    def object_definitions(self) -> int:
-        return len(self._objects)
 
-
-@t.final
 class DNBinary:
     def __init__(self, stream: StreamReader) -> None:
-        self.stream = RecordStream(stream)
+        self.stream: RecordStream = RecordStream(stream)
         self._records: list[RecordItem] = []
 
     def parse(self) -> list[RecordItem]:
@@ -288,17 +279,13 @@ class DNBinary:
 
         return self._records
 
-    @property
-    def object_definitions(self) -> int:
-        return self.stream.object_definitions
-
 
 def parse_stream(stream: StreamReader) -> list[RecordItem]:
     """Parse a given binary MS-NRBF stream into a list of record objects."""
     return DNBinary(stream).parse()
 
 
-def parse_bytes(data: bytes | bytearray | memoryview) -> list[RecordItem]:
+def parse_bytes(data: Buffer) -> list[RecordItem]:
     """Parse a given buffer into a list of record objects."""
     stream = io.BytesIO(data)
     return parse_stream(stream)
@@ -311,7 +298,7 @@ def parse_file(path: StrPath) -> list[RecordItem]:
 
 
 def serialize_records(records: cabc.Iterable[RecordItem]) -> bytes:
-    """Serialize a sequence of `RecordItem` objects into NRBF-formatted data."""
+    """Serialize a sequence of records into NRBF-formatted data."""
     buffer = io.BytesIO()
     writer = RecordWriter(buffer)
 
