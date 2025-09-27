@@ -192,15 +192,11 @@ class RecordTypeEnum(enum.IntEnum):
             case self.MessageEnd:
                 return MessageEnd()
 
-    def serialize(self, record: RecordItem, writer: RecordWriter) -> None:
+    @classmethod
+    def serialize(cls, record: RecordItem, writer: RecordWriter) -> None:
         """Serialize a record to the writer stream."""
-        if self.from_record(record) != self:
-            expected_name = type(self).__name__
-            record_name = type(record).__name__
-            msg = f"expected {expected_name}; got {record_name}"
-            raise TypeError(msg)
-
-        writer.writer.byte(self.value)
+        record_id = cls.from_record(record).value
+        writer.writer.byte(record_id)
 
         match record:
             case SerializedStreamHeader():
@@ -235,8 +231,7 @@ class RecordWriter:
 
     def record(self, record: RecordItem) -> None:
         """Write an entire record to the stream."""
-        record_type = RecordTypeEnum.from_record(record)
-        record_type.serialize(record, self)
+        RecordTypeEnum.serialize(record, self)
 
 
 class DNBinary:
