@@ -197,9 +197,10 @@ class RecordTypeEnum(enum.IntEnum):
 
     def serialize(self, record: RecordItem, writer: RecordWriter) -> None:
         """Serialize a record to the writer stream."""
-        if not isinstance(record, type(self)):
-            expected_name = type(self).__name__
-            record_name = type(record).__name__
+        expected_name = type(self).__name__
+        record_name = type(record).__name__
+
+        if record_name != expected_name:
             msg = f"expected {expected_name}; got {record_name}"
             raise TypeError(msg)
 
