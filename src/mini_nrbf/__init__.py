@@ -186,21 +186,17 @@ class RecordTypeEnum(enum.IntEnum):
                     minor_version=stream.int32(),
                 )
             case self.BinaryObjectString:
-                object_id = stream.int32()
-                record = BinaryObjectString(
-                    object_id=object_id, value=stream.string()
+                return BinaryObjectString(
+                    object_id=stream.int32(), value=stream.string()
                 )
-                stream.set_object(object_id, record)
-                return record
             case self.MessageEnd:
                 return MessageEnd()
 
     def serialize(self, record: RecordItem, writer: RecordWriter) -> None:
         """Serialize a record to the writer stream."""
-        expected_name = type(self).__name__
-        record_name = type(record).__name__
-
-        if record_name != expected_name:
+        if self.from_record(record) != self:
+            expected_name = type(self).__name__
+            record_name = type(record).__name__
             msg = f"expected {expected_name}; got {record_name}"
             raise TypeError(msg)
 
@@ -215,30 +211,19 @@ class RecordTypeEnum(enum.IntEnum):
             case BinaryObjectString():
                 writer.writer.int32(record.object_id)
                 writer.writer.string(record.value)
-                writer.set_object(record.object_id, record)
-            case _:
+            case MessageEnd():
+                # MessageEnd has no additional data.
                 pass
 
 
 class RecordStream(PrimitiveStream):
     def __init__(self, stream: StreamReader) -> None:
         super().__init__(stream)
-        self._objects: dict[int, RecordItem] = {}
 
     def record(self) -> RecordItem:
         """Read an entire record from the stream."""
         record_type = RecordTypeEnum(self.byte())
         return record_type.parse(self)
-
-    def set_object(self, ref: int, obj: RecordItem) -> None:
-        """
-        Register an object.
-
-        Given an object reference, an object, and optionally its values,
-        register this object so that it can be retrieved by later
-        references to it.
-        """
-        self._objects[ref] = obj
 
 
 class RecordWriter:
@@ -247,16 +232,11 @@ class RecordWriter:
     def __init__(self, stream: StreamWriter) -> None:
         super().__init__()
         self.writer: PrimitiveWriter = PrimitiveWriter(stream)
-        self._objects: dict[int, RecordItem] = {}
 
     def record(self, record: RecordItem) -> None:
         """Write an entire record to the stream."""
         record_type = RecordTypeEnum.from_record(record)
         record_type.serialize(record, self)
-
-    def set_object(self, ref: int, obj: RecordItem) -> None:
-        """Register an object for reference tracking."""
-        self._objects[ref] = obj
 
 
 class DNBinary:
@@ -288,8 +268,8 @@ def load_bytes(data: Buffer) -> tuple[RecordItem, ...]:
 
 def load_file(path: StrPath) -> tuple[RecordItem, ...]:
     """Deserialize a given file path into a sequence of records."""
-    data = pathlib.Path(path).read_bytes()
-    return load_bytes(data)
+    with pathlib.Path(path).open("rb") as f:
+        return load_stream(f)
 
 
 def dump_stream(
