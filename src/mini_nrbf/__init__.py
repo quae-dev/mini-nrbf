@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 """
-mini_nbrf: A bare-bones MS-NRBF parser.
+mini_nbrf: A bare-bones MS-NRBF serializer.
 
-A feature-less parser and serialiser based on MS-NRBF, the .NET Remoting
+A feature-less parser and serializer based on MS-NRBF, the .NET Remoting
 Binary Format: <https://msdn.microsoft.com/en-us/library/cc236844.aspx>
 """
 
@@ -38,11 +38,12 @@ __all__ = [
     "SerializedStreamHeader",
     "StreamReader",
     "StreamWriter",
-    "parse_bytes",
-    "parse_file",
-    "parse_stream",
-    "serialize_records",
-    "serialize_to_file",
+    "dump_bytes",
+    "dump_file",
+    "dump_stream",
+    "load_bytes",
+    "load_file",
+    "load_stream",
 ]
 
 
@@ -196,33 +197,26 @@ class RecordTypeEnum(enum.IntEnum):
 
     def serialize(self, record: RecordItem, writer: RecordWriter) -> None:
         """Serialize a record to the writer stream."""
+        if not isinstance(record, type(self)):
+            expected_name = type(self).__name__
+            record_name = type(record).__name__
+            msg = f"expected {expected_name}; got {record_name}"
+            raise TypeError(msg)
+
         writer.writer.byte(self.value)
 
-        match self:
-            case self.SerializedStreamHeader:
-                if not isinstance(record, SerializedStreamHeader):
-                    msg = (
-                        f"Expected SerializedStreamHeader, got {type(record)}"
-                    )
-                    raise TypeError(msg)
+        match record:
+            case SerializedStreamHeader():
                 writer.writer.int32(record.root_id)
                 writer.writer.int32(record.header_id)
                 writer.writer.int32(record.major_version)
                 writer.writer.int32(record.minor_version)
-
-            case self.BinaryObjectString:
-                if not isinstance(record, BinaryObjectString):
-                    msg = f"Expected BinaryObjectString, got {type(record)}"
-                    raise TypeError(msg)
+            case BinaryObjectString():
                 writer.writer.int32(record.object_id)
                 writer.writer.string(record.value)
                 writer.set_object(record.object_id, record)
-
-            case self.MessageEnd:
-                # MessageEnd has no additional data.
-                if not isinstance(record, MessageEnd):
-                    msg = f"Expected MessageEnd, got {type(record)}"
-                    raise TypeError(msg)
+            case _:
+                pass
 
 
 class RecordStream(PrimitiveStream):
@@ -280,37 +274,41 @@ class DNBinary:
         return tuple(self._records)
 
 
-def parse_stream(stream: StreamReader) -> tuple[RecordItem, ...]:
-    """Parse a given binary MS-NRBF stream into a list of record objects."""
+def load_stream(stream: StreamReader) -> tuple[RecordItem, ...]:
+    """Deserialize a given binary stream into a sequence of records."""
     return DNBinary(stream).parse()
 
 
-def parse_bytes(data: Buffer) -> tuple[RecordItem, ...]:
-    """Parse a given buffer into a list of record objects."""
+def load_bytes(data: Buffer) -> tuple[RecordItem, ...]:
+    """Deserialize a given buffer into a sequence of records."""
     stream = io.BytesIO(data)
-    return parse_stream(stream)
+    return load_stream(stream)
 
 
-def parse_file(path: StrPath) -> tuple[RecordItem, ...]:
-    """Parse a given file path into a list of record objects."""
+def load_file(path: StrPath) -> tuple[RecordItem, ...]:
+    """Deserialize a given file path into a sequence of records."""
     data = pathlib.Path(path).read_bytes()
-    return parse_bytes(data)
+    return load_bytes(data)
 
 
-def serialize_records(records: cabc.Iterable[RecordItem]) -> bytes:
-    """Serialize a sequence of records into NRBF-formatted data."""
-    buffer = io.BytesIO()
-    writer = RecordWriter(buffer)
+def dump_stream(
+    records: cabc.Iterable[RecordItem], stream: StreamWriter
+) -> None:
+    """Serialize a sequence of records to a writable stream."""
+    writer = RecordWriter(stream)
 
     for record in records:
         writer.record(record)
 
+
+def dump_bytes(records: cabc.Iterable[RecordItem]) -> bytes:
+    """Serialize a sequence of records to bytes."""
+    buffer = io.BytesIO()
+    dump_stream(records, buffer)
     return buffer.getvalue()
 
 
-def serialize_to_file(
-    records: cabc.Iterable[RecordItem], path: StrPath
-) -> int:
-    """Serialize a sequence of `RecordItem` objects and write to a file."""
-    data = serialize_records(records)
-    return pathlib.Path(path).write_bytes(data)
+def dump_file(records: cabc.Iterable[RecordItem], path: StrPath) -> None:
+    """Serialize a sequence of records to a file."""
+    with pathlib.Path(path).open("wb") as f:
+        dump_stream(records, f)

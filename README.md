@@ -1,6 +1,6 @@
 # mini-nrbf
 
-Bare-bones MS-NRBF parser written in Python.
+Bare-bones MS-NRBF serializer written in Python.
 
 ## Installation
 
@@ -13,13 +13,13 @@ pip install git+https://github.com/quae-dev/mini-nrbf.git
 ```python
 import mini_nrbf
 
-records = mini_nrbf.parse_file("data.bin")
+records = mini_nrbf.load_file("data.bin")
 
 for record in records:
     if isinstance(record, mini_nrbf.BinaryObjectString):
         record.value = "new value"
 
-mini_nrbf.serialize_to_file(records, "data.bin")
+mini_nrbf.dump_file(records, "data.bin")
 ```
 
 ## License

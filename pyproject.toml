@@ -1,7 +1,7 @@
 [project]
 name = "mini-nrbf"
 version = "0.1.0"
-description = "Bare-bones MS-NRBF parser"
+description = "Bare-bones MS-NRBF serializer"
 readme = "README.md"
 license = "BSD-3-Clause"
 authors = [
